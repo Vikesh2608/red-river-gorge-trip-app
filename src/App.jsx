@@ -13,14 +13,11 @@ const supabase = createClient(
 export default function TripApp() {
   const [members, setMembers] = useState(['Amit', 'John']);
   const [name, setName] = useState('');
-
   const [photos, setPhotos] = useState([]);
-
   const [expenses, setExpenses] = useState([
     { title: 'Cabin', amount: 300 },
     { title: 'Fuel', amount: 120 }
   ]);
-
   const [expenseTitle, setExpenseTitle] = useState('');
   const [expenseAmount, setExpenseAmount] = useState('');
 
@@ -33,10 +30,9 @@ export default function TripApp() {
     { time: 'Fri 1:00 PM', task: 'Check-in Cabin' }
   ]);
 
-  const totalBudget = useMemo(
-    () => expenses.reduce((a, b) => a + Number(b.amount || 0), 0),
-    [expenses]
-  );
+  const totalBudget = useMemo(() => {
+    return expenses.reduce((sum, item) => sum + Number(item.amount || 0), 0);
+  }, [expenses]);
 
   useEffect(() => {
     loadMembers();
@@ -50,7 +46,7 @@ export default function TripApp() {
       .order('id');
 
     if (data?.length) {
-      setMembers(data.map((x) => x.name));
+      setMembers(data.map((item) => item.name));
     }
   };
 
@@ -89,16 +85,16 @@ export default function TripApp() {
   };
 
   const upload = (e) => {
-    const files = [...e.target.files].map((f) =>
-      URL.createObjectURL(f)
+    const files = [...e.target.files].map((file) =>
+      URL.createObjectURL(file)
     );
 
     setPhotos([...photos, ...files]);
   };
 
   return (
-    <div className="p-6 grid gap-6 bg-slate-50 min-h-screen">
-      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+    <div className="p-6 min-h-screen bg-slate-50 space-y-6">
+      <div className="flex flex-col md:flex-row md:justify-between gap-4">
         <div>
           <h1 className="text-4xl font-bold">
             Red River Gorge Trip 2026
@@ -110,9 +106,7 @@ export default function TripApp() {
 
         <div className="flex gap-2">
           <Button>Invite Friends</Button>
-          <Button variant="outline">
-            Share Public Link
-          </Button>
+          <Button variant="outline">Share Public Link</Button>
         </div>
       </div>
 
@@ -129,7 +123,7 @@ export default function TripApp() {
 
         {/* PEOPLE */}
         <TabsContent value="members">
-          <Card className="p-4 rounded-2xl shadow">
+          <Card className="rounded-2xl shadow p-4">
             <CardContent>
               <div className="flex gap-2 mb-4">
                 <Input
@@ -141,12 +135,12 @@ export default function TripApp() {
               </div>
 
               <div className="grid md:grid-cols-2 gap-2">
-                {members.map((m, i) => (
+                {members.map((member, i) => (
                   <div
                     key={i}
-                    className="py-2 px-3 border rounded-xl bg-white"
+                    className="px-3 py-2 bg-white border rounded-xl"
                   >
-                    {m}
+                    {member}
                   </div>
                 ))}
               </div>
@@ -156,13 +150,13 @@ export default function TripApp() {
 
         {/* BUDGET */}
         <TabsContent value="budget">
-          <Card className="p-4 rounded-2xl shadow">
+          <Card className="rounded-2xl shadow p-4">
             <CardContent>
-              <p className="text-2xl font-bold">
+              <p className="text-2xl font-bold mb-4">
                 Total Budget: ${totalBudget}
               </p>
 
-              <div className="flex gap-2 my-3">
+              <div className="flex gap-2 mb-4">
                 <Input
                   placeholder="Expense title"
                   value={expenseTitle}
@@ -182,13 +176,13 @@ export default function TripApp() {
                 <Button onClick={addExpense}>Add</Button>
               </div>
 
-              {expenses.map((e, i) => (
+              {expenses.map((item, i) => (
                 <div
                   key={i}
                   className="flex justify-between border-b py-2"
                 >
-                  <span>{e.title}</span>
-                  <span>${e.amount}</span>
+                  <span>{item.title}</span>
+                  <span>${item.amount}</span>
                 </div>
               ))}
             </CardContent>
@@ -197,7 +191,7 @@ export default function TripApp() {
 
         {/* PHOTOS */}
         <TabsContent value="photos">
-          <Card className="p-4 rounded-2xl shadow">
+          <Card className="rounded-2xl shadow p-4">
             <CardContent>
               <input
                 type="file"
@@ -207,11 +201,11 @@ export default function TripApp() {
               />
 
               <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                {photos.map((p, i) => (
+                {photos.map((photo, i) => (
                   <img
                     key={i}
-                    src={p}
-                    className="rounded-2xl h-32 w-full object-cover"
+                    src={photo}
+                    className="h-32 w-full object-cover rounded-2xl"
                   />
                 ))}
               </div>
@@ -221,46 +215,38 @@ export default function TripApp() {
 
         {/* STAY */}
         <TabsContent value="stay">
-          <Card className="p-4 rounded-2xl shadow mb-4">
+          <Card className="rounded-2xl shadow p-4 mb-4">
             <CardContent>
-              <div className="grid md:grid-cols-3 gap-3 text-sm">
-                <div className="p-3 bg-white rounded-xl border">
+              <div className="grid md:grid-cols-3 gap-3">
+                <div className="p-3 bg-white border rounded-xl">
                   Check-in: Fri 3 PM
                 </div>
-                <div className="p-3 bg-white rounded-xl border">
+                <div className="p-3 bg-white border rounded-xl">
                   Check-out: Sun 11 AM
                 </div>
-                <div className="p-3 bg-white rounded-xl border">
-                  WiFi: Included
+                <div className="p-3 bg-white border rounded-xl">
+                  WiFi Included
                 </div>
               </div>
             </CardContent>
           </Card>
 
-          <Card className="p-4 rounded-2xl shadow">
+          <Card className="rounded-2xl shadow p-4">
             <CardContent>
               <p className="font-semibold">Cabin Address:</p>
-              <p>
-                123 Mountain View Rd, Red River Gorge, KY
-              </p>
-              <p className="text-sm text-slate-500 mt-2">
-                Check-in Friday 3PM • Check-out Sunday 11AM
-              </p>
+              <p>123 Mountain View Rd, KY</p>
             </CardContent>
           </Card>
         </TabsContent>
 
         {/* CARS */}
         <TabsContent value="cars">
-          <Card className="p-4 rounded-2xl shadow">
+          <Card className="rounded-2xl shadow p-4">
             <CardContent>
-              {cars.map((c, i) => (
-                <div
-                  key={i}
-                  className="border-b py-2"
-                >
-                  {c.driver} • Seats {c.seats} • Passengers:{' '}
-                  {c.passengers}
+              {cars.map((car, i) => (
+                <div key={i} className="border-b py-2">
+                  {car.driver} • Seats {car.seats} • Passengers:{' '}
+                  {car.passengers}
                 </div>
               ))}
             </CardContent>
@@ -269,17 +255,14 @@ export default function TripApp() {
 
         {/* TIMELINE */}
         <TabsContent value="timeline">
-          <Card className="p-4 rounded-2xl shadow">
+          <Card className="rounded-2xl shadow p-4">
             <CardContent>
-              {timeline.map((t, i) => (
-                <div
-                  key={i}
-                  className="border-b py-2"
-                >
+              {timeline.map((item, i) => (
+                <div key={i} className="border-b py-2">
                   <span className="font-bold">
-                    {t.time}
+                    {item.time}
                   </span>{' '}
-                  - {t.task}
+                  - {item.task}
                 </div>
               ))}
             </CardContent>
@@ -288,27 +271,22 @@ export default function TripApp() {
 
         {/* PUBLIC */}
         <TabsContent value="public">
-          <Card className="p-4 rounded-2xl shadow">
+          <Card className="rounded-2xl shadow p-4">
             <CardContent>
-              <h3 className="font-bold text-xl mb-2">
+              <h3 className="font-bold text-xl mb-3">
                 Public Trip Page
               </h3>
 
-              <p>
-                Share highlights, itinerary, and photos with
-                anyone.
-              </p>
-
-              <div className="grid md:grid-cols-3 gap-3 mt-4">
-                <div className="p-3 rounded-xl bg-white border">
+              <div className="grid md:grid-cols-3 gap-3">
+                <div className="p-3 bg-white border rounded-xl">
                   Countdown: 14 days
                 </div>
 
-                <div className="p-3 rounded-xl bg-white border">
+                <div className="p-3 bg-white border rounded-xl">
                   Members: {members.length}
                 </div>
 
-                <div className="p-3 rounded-xl bg-white border">
+                <div className="p-3 bg-white border rounded-xl">
                   Budget: ${totalBudget}
                 </div>
               </div>
