@@ -1,4 +1,20 @@
 import React, { useEffect, useMemo, useState } from 'react';
+if (typeof document !== 'undefined') {
+  const ensureMeta = (attr, key, value) => {
+    let el = document.querySelector(`meta[${attr}='${key}']`);
+    if (!el) { el = document.createElement('meta'); el.setAttribute(attr,key); document.head.appendChild(el); }
+    el.setAttribute('content', value);
+  };
+  document.title = 'Red River Gorge Trip';
+  ensureMeta('name','theme-color','#0f172a');
+  ensureMeta('name','apple-mobile-web-app-capable','yes');
+  ensureMeta('name','apple-mobile-web-app-status-bar-style','black-translucent');
+  ensureMeta('name','apple-mobile-web-app-title','RRG Trip');
+  let link = document.querySelector("link[rel='manifest']");
+  if(!link){ link = document.createElement('link'); link.rel='manifest'; document.head.appendChild(link); }
+  const manifest = {name:'Red River Gorge Trip',short_name:'RRG Trip',display:'standalone',start_url:'/',background_color:'#0f172a',theme_color:'#0f172a',icons:[{src:'https://cdn-icons-png.flaticon.com/512/684/684908.png',sizes:'192x192',type:'image/png'}]};
+  link.href = URL.createObjectURL(new Blob([JSON.stringify(manifest)],{type:'application/json'}));
+}
 import { createClient } from '@supabase/supabase-js';
 
 const supabase = createClient('https://veqacfdomtsizvrbbwck.supabase.co','sb_publishable_VTBNwUiejWUNQQvPTsDTbA_XOBZ4JOQ');
@@ -44,16 +60,19 @@ const [arrEta,setArrEta]=useState('');
 const [liveTrackers,setLiveTrackers]=useState([]);
 const [trackName,setTrackName]=useState('');
 const [expenseSubType,setExpenseSubType]=useState('');
+const [syncing,setSyncing]=useState(true);
+const [lastUpdated,setLastUpdated]=useState('Connecting...');
+const [pageReady,setPageReady]=useState(false);
 const totalBudget = useMemo(()=>expenses.reduce((a,b)=>a+Number(b.amount||0),0),[expenses]);
 const split = members.length ? (totalBudget/members.length).toFixed(2) : 0;
 useEffect(()=>{
 const loadRealtime = async()=>{
  const {data}=await supabase.from('trip_state').select('*').eq('id',1).single();
- if(data){ setMembers(data.members||[]); setExpenses(data.expenses||[]); setPublicPosts(data.publicPosts||[]); setComments(data.comments||[]); setLiveTrackers(data.liveTrackers||[]); setStay(data.stay||[]); setCars(data.cars||[]); setTimeline(data.timeline||[]); setArrivalStatus(data.arrivalStatus||[]); setEmergencyContacts(data.emergencyContacts||[]); setPhotos(data.photos||[]); }
+ if(data){ setMembers(data.members||[]); setLastUpdated('Synced just now'); setSyncing(false); setPageReady(true); setExpenses(data.expenses||[]); setPublicPosts(data.publicPosts||[]); setComments(data.comments||[]); setLiveTrackers(data.liveTrackers||[]); setStay(data.stay||[]); setCars(data.cars||[]); setTimeline(data.timeline||[]); setArrivalStatus(data.arrivalStatus||[]); setEmergencyContacts(data.emergencyContacts||[]); setPhotos(data.photos||[]); }
 };
 loadRealtime();
 const channel=supabase.channel('trip-sync').on('postgres_changes',{event:'UPDATE',schema:'public',table:'trip_state'},payload=>{
- const d=payload.new; setMembers(d.members||[]); setExpenses(d.expenses||[]); setPublicPosts(d.publicPosts||[]); setComments(d.comments||[]); setLiveTrackers(d.liveTrackers||[]); setStay(d.stay||[]); setCars(d.cars||[]); setTimeline(d.timeline||[]); setArrivalStatus(d.arrivalStatus||[]); setEmergencyContacts(d.emergencyContacts||[]); setPhotos(d.photos||[]);
+ const d=payload.new; setSyncing(false); setLastUpdated('Updated just now'); setMembers(d.members||[]); setExpenses(d.expenses||[]); setPublicPosts(d.publicPosts||[]); setComments(d.comments||[]); setLiveTrackers(d.liveTrackers||[]); setStay(d.stay||[]); setCars(d.cars||[]); setTimeline(d.timeline||[]); setArrivalStatus(d.arrivalStatus||[]); setEmergencyContacts(d.emergencyContacts||[]); setPhotos(d.photos||[]);
 }).subscribe();
 
 fetch('https://wttr.in/Slade,KY?format=j1').then(r=>r.json()).then(data=>{
@@ -65,7 +84,7 @@ return ()=>{supabase.removeChannel(channel)};
 },[]);
 
 useEffect(()=>{
-const saveState=async()=>{await supabase.from('trip_state').upsert({id:1,members,expenses,publicPosts,comments,liveTrackers,stay,cars,timeline,arrivalStatus,emergencyContacts,photos});};
+const saveState=async()=>{setSyncing(true); await supabase.from('trip_state').upsert({id:1,members,expenses,publicPosts,comments,liveTrackers,stay,cars,timeline,arrivalStatus,emergencyContacts,photos}); setSyncing(false); setLastUpdated('Saved just now');};
 saveState();
 },[members,expenses,publicPosts,comments,liveTrackers,stay,cars,timeline,arrivalStatus,emergencyContacts,photos]);
 
@@ -117,14 +136,14 @@ const startVoice=()=>{
  rec.onerror=()=>{setListening(false); setAiTip('Voice command failed. Try again.');};
 };
 
-const btn={padding:'12px 18px',border:'0',borderRadius:999,background:'linear-gradient(135deg,#2563eb,#7c3aed)',color:'#fff',cursor:'pointer',fontWeight:700,boxShadow:'0 10px 24px rgba(37,99,235,0.28)'};
-const card={background:'rgba(255,255,255,0.88)',backdropFilter:'blur(14px)',border:'1px solid rgba(255,255,255,0.5)',borderRadius:28,padding:24,marginTop:18,boxShadow:'0 20px 50px rgba(15,23,42,0.12)'};
-const input={padding:14,border:'1px solid #dbeafe',borderRadius:14,minWidth:180,background:'#fff',fontSize:16};
+const btn={padding:'14px 18px',border:'0',borderRadius:18,background:'linear-gradient(135deg,#2563eb,#7c3aed)',color:'#fff',cursor:'pointer',fontWeight:800,boxShadow:'0 10px 24px rgba(37,99,235,0.28)',transition:'all .2s ease',WebkitTapHighlightColor:'transparent'};
+const card={background:'rgba(255,255,255,0.82)',backdropFilter:'blur(22px)',WebkitBackdropFilter:'blur(22px)',border:'1px solid rgba(255,255,255,0.55)',borderRadius:32,padding:24,marginTop:18,boxShadow:'0 24px 60px rgba(15,23,42,0.16)'};
+const input={padding:16,border:'1px solid #dbeafe',borderRadius:18,minWidth:180,background:'rgba(255,255,255,0.95)',fontSize:16,outline:'none'};
 
-return <div style={{padding:18,fontFamily:'-apple-system,BlinkMacSystemFont,Arial,sans-serif',background:'linear-gradient(180deg,#0f172a,#1e3a8a,#7c3aed,#f8fafc)',minHeight:'100vh',paddingBottom:110}}>
-<h1 style={{fontSize:48,marginBottom:6,fontWeight:900,letterSpacing:-1,color:'#fff'}}>🏕️ Red River Gorge Trip 2026</h1>
-<p style={{color:'#e2e8f0',marginTop:0,fontSize:18}}>Luxury mobile dashboard • concierge planner • live travel intelligence</p>
-<div style={{display:'flex',gap:10,overflowX:'auto',paddingBottom:8,margin:'18px 0'}}>{['people','budget','photos','stay','cars','timeline','arrival','tracker','comments','guide','assistant','emergency','public'].map(t=><button key={t} style={{...btn,whiteSpace:'nowrap',opacity:tab===t?1:0.75,transform:tab===t?'scale(1.02)':'scale(1)'}} onClick={()=>setTab(t)}>{t}</button>)}</div>
+if(!pageReady){return <div style={{minHeight:'100vh',display:'flex',alignItems:'center',justifyContent:'center',background:'linear-gradient(180deg,#020617,#0f172a,#1d4ed8,#7c3aed)',color:'#fff',fontFamily:'-apple-system,BlinkMacSystemFont,Arial,sans-serif'}}><div style={{textAlign:'center'}}><div style={{fontSize:52,marginBottom:12}}>🏕️</div><div style={{fontSize:28,fontWeight:900}}>Red River Gorge Trip</div><div style={{marginTop:10,opacity:.9}}>Loading luxury travel dashboard...</div><div style={{marginTop:16,fontSize:22}}>✨</div></div></div>} return <div style={{padding:18,fontFamily:'-apple-system,BlinkMacSystemFont,Arial,sans-serif',background:'linear-gradient(180deg,#020617,#0f172a,#1d4ed8,#7c3aed,#f8fafc)',minHeight:'100vh',paddingBottom:110,letterSpacing:'-0.01em',animation:'fadeIn .35s ease'}}>
+<h1 style={{fontSize:46,marginBottom:6,fontWeight:900,letterSpacing:-1.4,color:'#fff',lineHeight:1.02}}>🏕️ Red River Gorge Trip 2026</h1>
+<p style={{color:'#e2e8f0',marginTop:0,fontSize:18}}>Luxury mobile dashboard • concierge planner • live travel intelligence</p><div style={{marginBottom:10,color:'#fff',fontSize:13,opacity:.9}}>📲 iPhone: Share → Add to Home Screen for full app mode</div><div style={{display:'inline-flex',gap:10,alignItems:'center',padding:'10px 14px',background:'rgba(255,255,255,0.12)',border:'1px solid rgba(255,255,255,0.15)',borderRadius:999,color:'#fff',fontWeight:700,marginBottom:8}}><span>{syncing?'🔄 Syncing Live':'🟢 Live Synced'}</span><span style={{opacity:.8}}>•</span><span>🕒 {lastUpdated}</span></div>
+<div style={{display:'flex',gap:10,overflowX:'auto',paddingBottom:8,margin:'18px 0'}}>{['people','budget','photos','stay','cars','timeline','arrival','tracker','comments','guide','assistant','emergency','public'].map(t=><button key={t} style={{...btn,whiteSpace:'nowrap',opacity:tab===t?1:0.72,transform:tab===t?'scale(1.04) translateY(-2px)':'scale(1)',transition:'all .22s ease'}} onClick={()=>setTab(t)}>{t}</button>)}</div>
 
 {tab==='people' && <div style={card}><h2>👥 Travelers</h2><div style={{marginBottom:14}}><a href='https://chat.whatsapp.com/I9s6EZK81X05llarQSPyDs' target='_blank' style={{...btn,textDecoration:'none',display:'inline-block'}}>💬 Open WhatsApp Group</a><button style={btn} onClick={()=>window.open('https://faq.whatsapp.com/5913398998672934','_blank')}>📍 Share Live Location Help</button></div><div style={{display:'flex',gap:10,flexWrap:'wrap'}}><input style={input} placeholder='Name' value={name} onChange={e=>setName(e.target.value)}/><input style={input} placeholder='Phone Number' value={phone} onChange={e=>setPhone(e.target.value)}/><button style={btn} onClick={addMember}>{editingMember!==null?'Update':'Add'}</button></div><ul>{members.map((m,i)=><li key={i} style={{margin:'10px 0'}}><b>{m.name}</b> • 📞 <a href={`tel:${m.phone}`} style={{textDecoration:'none',fontSize:20,marginRight:8}}>📲</a> <a href={`https://wa.me/${String(m.phone).replace(/\D/g,'')}`} target='_blank' style={{textDecoration:'none',fontSize:20,marginRight:8}}>💬</a> {m.phone||'N/A'} <button onClick={()=>editMember(i)}>Edit</button> <button onClick={()=>removeMember(i)}>Delete</button></li>)}</ul></div>}
 
@@ -152,6 +171,6 @@ return <div style={{padding:18,fontFamily:'-apple-system,BlinkMacSystemFont,Aria
 
 {tab==='public' && <div style={card}><h2>🌍 Social Travel Lounge</h2><div style={{marginBottom:14}}><a href='https://chat.whatsapp.com/I9s6EZK81X05llarQSPyDs' target='_blank' style={{...btn,textDecoration:'none',display:'inline-block'}}>💬 Join Trip WhatsApp Group</a><button style={btn} onClick={()=>window.open('https://faq.whatsapp.com/5913398998672934','_blank')}>📍 Share Live Location</button></div><p>Members: {members.length} • Budget ${totalBudget} • Split ${split}</p><div style={{display:'flex',gap:10,flexWrap:'wrap',margin:'14px 0'}}><input style={input} placeholder='Your name' value={postName} onChange={e=>setPostName(e.target.value)}/><input style={input} placeholder='Share update...' value={postText} onChange={e=>setPostText(e.target.value)}/><button style={btn} onClick={addPost}>Post</button></div><div style={{display:'grid',gap:12}}>{publicPosts.map((p,i)=><div key={i} style={{padding:16,background:'#fff',borderRadius:18,border:'1px solid #e5e7eb'}}><b>{p.name}</b><p style={{margin:'8px 0'}}>{p.text}</p><div style={{display:'flex',gap:10}}><button onClick={()=>likePost(i)}>❤️ {p.likes}</button><button onClick={()=>removePost(i)}>Delete</button></div></div>)}</div><div style={{marginTop:16,padding:16,background:'#eff6ff',borderRadius:16}}>Live social feed for trip members. Share plans, ETA, cabin updates, hiking ideas, photos, and meetups. Use 📍 Share Live Location in WhatsApp during travel day.</div></div>}
 
-<div style={{position:'fixed',bottom:0,left:0,right:0,backdropFilter:'blur(18px)',background:'rgba(15,23,42,0.78)',borderTop:'1px solid rgba(255,255,255,0.08)',display:'flex',justifyContent:'space-around',padding:'12px 8px',zIndex:50}}>{[['people','👥'],['budget','💰'],['guide','🗺️'],['assistant','🤖'],['public','🌍']].map(([k,icon])=><button key={k} onClick={()=>setTab(k)} style={{background:'transparent',border:0,color:'#fff',fontSize:24,opacity:tab===k?1:0.6}}>{icon}</button>)}</div><div style={{marginTop:40,padding:'10px 0',textAlign:'center',color:'#e2e8f0',fontSize:13,fontWeight:700}}>Built by Vikesh • @vikesh-2026 • 💬 Group Chat Ready</div>
+<div style={{position:'fixed',bottom:10,left:10,right:10,backdropFilter:'blur(22px)',WebkitBackdropFilter:'blur(22px)',background:'rgba(15,23,42,0.72)',border:'1px solid rgba(255,255,255,0.12)',display:'flex',justifyContent:'space-around',padding:'14px 10px',zIndex:50,borderRadius:24,boxShadow:'0 20px 40px rgba(0,0,0,.25)'}}>{[['people','👥'],['budget','💰'],['guide','🗺️'],['assistant','🤖'],['public','🌍']].map(([k,icon])=><button key={k} onClick={()=>setTab(k)} style={{background:'transparent',border:0,color:'#fff',fontSize:24,opacity:tab===k?1:0.6,transform:tab===k?'scale(1.15)':'scale(1)',transition:'all .2s ease'}}>{icon}</button>)}</div><div style={{marginTop:40,padding:'10px 0',textAlign:'center',color:'#e2e8f0',fontSize:13,fontWeight:700}}>Built by Vikesh • @vikesh-2026 • Designed with Luxury Motion ✨</div>
 </div>
 }
