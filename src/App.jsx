@@ -18,6 +18,7 @@ if (typeof document !== 'undefined') {
 import { createClient } from '@supabase/supabase-js';
 
 const supabase = createClient('https://veqacfdomtsizvrbbwck.supabase.co','sb_publishable_VTBNwUiejWUNQQvPTsDTbA_XOBZ4JOQ');
+const TABLES={members:'trip_members',expenses:'trip_expenses',comments:'trip_comments',posts:'trip_posts'};
 export default function TripApp(){
 const [tab,setTab]=useState('people');
 const [members,setMembers]=useState([]);
@@ -70,13 +71,22 @@ const split = members.length ? (totalBudget/members.length).toFixed(2) : 0;
 useEffect(()=>{
 setTimeout(()=>setPageReady(true),2000);
 const loadRealtime = async()=>{
- const {data}=await supabase.from('trip_state').select('*').eq('id',1).single();
- if(data){ setHydrated(true); setPageReady(true); setMembers(data.members||[]); setLastUpdated('Synced just now'); setSyncing(false); setPageReady(true); setExpenses(data.expenses||[]); setPublicPosts(data.publicPosts||[]); setComments(data.comments||[]); setLiveTrackers(data.liveTrackers||[]); setStay(data.stay||[]); setCars(data.cars||[]); setTimeline(data.timeline||[]); setArrivalStatus(data.arrivalStatus||[]); setEmergencyContacts(data.emergencyContacts||[]); setPhotos(data.photos||[]); }
+ const [{data:m},{data:e},{data:c},{data:p}] = await Promise.all([
+  supabase.from(TABLES.members).select('*').order('id'),
+  supabase.from(TABLES.expenses).select('*').order('id'),
+  supabase.from(TABLES.comments).select('*').order('id'),
+  supabase.from(TABLES.posts).select('*').order('id')
+ ]);
+ setMembers(m||[]); setExpenses(e||[]); setComments(c||[]); setPublicPosts(p||[]);
+ setHydrated(true); setPageReady(true); setLastUpdated('Synced just now'); setSyncing(false);
 };
 loadRealtime().then(()=>setHydrated(true)).catch(()=>{setLoadError('Offline mode');setPageReady(true);setSyncing(false);setLastUpdated('Offline');});
-const channel=supabase.channel('trip-sync').on('postgres_changes',{event:'UPDATE',schema:'public',table:'trip_state'},payload=>{
- const d=payload.new; setHydrated(true); setSyncing(false); setLastUpdated('Updated just now'); setMembers(d.members||[]); setExpenses(d.expenses||[]); setPublicPosts(d.publicPosts||[]); setComments(d.comments||[]); setLiveTrackers(d.liveTrackers||[]); setStay(d.stay||[]); setCars(d.cars||[]); setTimeline(d.timeline||[]); setArrivalStatus(d.arrivalStatus||[]); setEmergencyContacts(d.emergencyContacts||[]); setPhotos(d.photos||[]);
-}).subscribe();
+const channel=supabase.channel('trip-sync')
+.on('postgres_changes',{event:'*',schema:'public',table:TABLES.members},()=>loadRealtime())
+.on('postgres_changes',{event:'*',schema:'public',table:TABLES.expenses},()=>loadRealtime())
+.on('postgres_changes',{event:'*',schema:'public',table:TABLES.comments},()=>loadRealtime())
+.on('postgres_changes',{event:'*',schema:'public',table:TABLES.posts},()=>loadRealtime())
+.subscribe();
 
 fetch('https://wttr.in/Slade,KY?format=j1').then(r=>r.json()).then(data=>{
 const c=data.current_condition?.[0];
@@ -86,11 +96,7 @@ navigator.geolocation && navigator.geolocation.getCurrentPosition((pos)=>{setLoc
 return ()=>{supabase.removeChannel(channel)};
 },[]);
 
-useEffect(()=>{
-if(!hydrated) return;
-const saveState=async()=>{setSyncing(true); await supabase.from('trip_state').upsert({id:1,members,expenses,publicPosts,comments,liveTrackers,stay,cars,timeline,arrivalStatus,emergencyContacts,photos}); setSyncing(false); setLastUpdated('Saved just now');};
-saveState();
-},[hydrated,members,expenses,publicPosts,comments,liveTrackers,stay,cars,timeline,arrivalStatus,emergencyContacts,photos]);
+useEffect(()=>{},[hydrated]);
 
 const categoryTotals = useMemo(()=>expenses.reduce((acc,e)=>{acc[e.title]=(acc[e.title]||0)+Number(e.amount||0);return acc;},{}),[expenses]);
 const stayExpenses = useMemo(()=>expenses.filter(e=>String(e.title).toLowerCase()==='stay'),[expenses]);
@@ -100,11 +106,11 @@ const balances = useMemo(()=>{const map={}; members.forEach(m=>map[m.name]=0); e
 const settlements = useMemo(()=>{const creditors=[]; const debtors=[]; Object.entries(balances).forEach(([name,val])=>{if(val>0.01)creditors.push({name,amt:val}); else if(val<-0.01)debtors.push({name,amt:-val});}); const tx=[]; let i=0,j=0; while(i<debtors.length && j<creditors.length){const pay=Math.min(debtors[i].amt,creditors[j].amt); tx.push({from:debtors[i].name,to:creditors[j].name,amount:pay}); debtors[i].amt-=pay; creditors[j].amt-=pay; if(debtors[i].amt<0.01)i++; if(creditors[j].amt<0.01)j++; } return tx;},[balances]);
 const categoryLedgers = useMemo(()=>expenses.map((e,idx)=>{const ppl=e.people&&e.people.length?e.people:members.map(m=>m.name); const share=ppl.length?Number(e.amount||0)/ppl.length:0; const owes=ppl.filter(n=>n!==e.paidBy).map(n=>({name:n,amount:share})); return {id:idx,title:e.title,subType:e.subType||'',paidBy:e.paidBy,amount:Number(e.amount||0),share,participants:ppl,owes};}),[expenses,members]);
 
-const addMember=()=>{if(name.trim()){if(editingMember!==null){const updated=[...members];updated[editingMember]={name:name.trim(),phone};setMembers(updated);setEditingMember(null);}else{setMembers([...members,{name:name.trim(),phone}]);}setName('');setPhone('');}};
-const removeMember=(i)=>setMembers(members.filter((_,x)=>x!==i));
+const addMember=async()=>{if(!name.trim()) return; if(editingMember!==null){await supabase.from(TABLES.members).update({name:name.trim(),phone}).eq('id',members[editingMember].id);setEditingMember(null);}else{await supabase.from(TABLES.members).insert({name:name.trim(),phone});} setName('');setPhone('');};
+const removeMember=async(i)=>{await supabase.from(TABLES.members).delete().eq('id',members[i].id);} ;
 const editMember=(i)=>{setName(members[i].name);setPhone(members[i].phone||'');setEditingMember(i);};
-const addExpense=()=>{if(expenseTitle&&expenseAmount){const people=participants.length?participants:members.map(m=>m.name);setExpenses([...expenses,{title:expenseTitle,subType:expenseSubType,amount:Number(expenseAmount),paidBy:paidBy||'Unknown',people}]);setExpenseTitle('');setExpenseSubType('');setExpenseAmount('');setPaidBy('');setParticipants([]);}};
-const removeExpense=(i)=>setExpenses(expenses.filter((_,x)=>x!==i));
+const addExpense=async()=>{if(expenseTitle&&expenseAmount){const people=participants.length?participants:members.map(m=>m.name);await supabase.from(TABLES.expenses).insert({title:expenseTitle,subType:expenseSubType,amount:Number(expenseAmount),paidBy:paidBy||'Unknown',people});setExpenseTitle('');setExpenseSubType('');setExpenseAmount('');setPaidBy('');setParticipants([]);}};
+const removeExpense=async(i)=>{await supabase.from(TABLES.expenses).delete().eq('id',expenses[i].id);} ;
 const upload=(e)=>{const files=[...e.target.files].map(f=>URL.createObjectURL(f));setPhotos([...photos,...files]);};
 const removePhoto=(i)=>setPhotos(photos.filter((_,x)=>x!==i));
 const addCar=()=>{if(carDriver&&carSeats){setCars([...cars,{driver:carDriver,seats:carSeats,passengers:carPassengers}]);setCarDriver('');setCarSeats('');setCarPassengers('')}};
