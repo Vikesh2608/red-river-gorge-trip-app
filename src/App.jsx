@@ -49,11 +49,11 @@ const split = members.length ? (totalBudget/members.length).toFixed(2) : 0;
 useEffect(()=>{
 const loadRealtime = async()=>{
  const {data}=await supabase.from('trip_state').select('*').eq('id',1).single();
- if(data){ setMembers(data.members||[]); setExpenses(data.expenses||[]); setPublicPosts(data.publicPosts||[]); setComments(data.comments||[]); setLiveTrackers(data.liveTrackers||[]); }
+ if(data){ setMembers(data.members||[]); setExpenses(data.expenses||[]); setPublicPosts(data.publicPosts||[]); setComments(data.comments||[]); setLiveTrackers(data.liveTrackers||[]); setStay(data.stay||[]); setCars(data.cars||[]); setTimeline(data.timeline||[]); setArrivalStatus(data.arrivalStatus||[]); setEmergencyContacts(data.emergencyContacts||[]); setPhotos(data.photos||[]); }
 };
 loadRealtime();
 const channel=supabase.channel('trip-sync').on('postgres_changes',{event:'UPDATE',schema:'public',table:'trip_state'},payload=>{
- const d=payload.new; if(d.members) setMembers(d.members); if(d.expenses) setExpenses(d.expenses); if(d.publicPosts) setPublicPosts(d.publicPosts); if(d.comments) setComments(d.comments); if(d.liveTrackers) setLiveTrackers(d.liveTrackers);
+ const d=payload.new; setMembers(d.members||[]); setExpenses(d.expenses||[]); setPublicPosts(d.publicPosts||[]); setComments(d.comments||[]); setLiveTrackers(d.liveTrackers||[]); setStay(d.stay||[]); setCars(d.cars||[]); setTimeline(d.timeline||[]); setArrivalStatus(d.arrivalStatus||[]); setEmergencyContacts(d.emergencyContacts||[]); setPhotos(d.photos||[]);
 }).subscribe();
 
 fetch('https://wttr.in/Slade,KY?format=j1').then(r=>r.json()).then(data=>{
@@ -65,9 +65,9 @@ return ()=>{supabase.removeChannel(channel)};
 },[]);
 
 useEffect(()=>{
-const saveState=async()=>{await supabase.from('trip_state').upsert({id:1,members,expenses,publicPosts,comments,liveTrackers});};
+const saveState=async()=>{await supabase.from('trip_state').upsert({id:1,members,expenses,publicPosts,comments,liveTrackers,stay,cars,timeline,arrivalStatus,emergencyContacts,photos});};
 saveState();
-},[members,expenses,publicPosts,comments,liveTrackers]);
+},[members,expenses,publicPosts,comments,liveTrackers,stay,cars,timeline,arrivalStatus,emergencyContacts,photos]);
 
 const categoryTotals = useMemo(()=>expenses.reduce((acc,e)=>{acc[e.title]=(acc[e.title]||0)+Number(e.amount||0);return acc;},{}),[expenses]);
 const stayExpenses = useMemo(()=>expenses.filter(e=>String(e.title).toLowerCase()==='stay'),[expenses]);
