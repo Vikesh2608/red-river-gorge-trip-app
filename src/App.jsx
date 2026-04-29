@@ -22,6 +22,9 @@ const [timeline,setTimeline]=useState([{time:'Fri 8:00 AM',task:'Leave Atlanta'}
 const [comments,setComments]=useState([{name:'Admin',text:'Welcome to the trip planner!'}]);
 const [commentName,setCommentName]=useState('');
 const [commentText,setCommentText]=useState('');
+const [publicPosts,setPublicPosts]=useState([{name:'Amit',text:'Ready for the trip! 🎉',likes:2},{name:'John',text:'Who wants to hike Sky Bridge?',likes:1}]);
+const [postName,setPostName]=useState('');
+const [postText,setPostText]=useState('');
 const [weather,setWeather]=useState({temp:'Loading...',desc:'Fetching live weather...',humidity:'--',wind:'--'});
 const [location,setLocation]=useState({lat:null,lng:null,status:'Enable GPS for live maps'});
 const [aiTip,setAiTip]=useState('Loading AI travel advice...');
@@ -57,6 +60,9 @@ const addTimeline=()=>{setTimeline([...timeline,{time:'New Time',task:'New Activ
 const removeTimeline=(i)=>setTimeline(timeline.filter((_,x)=>x!==i));
 const addComment=()=>{if(commentText.trim()){setComments([...comments,{name:commentName||'Guest',text:commentText}]);setCommentName('');setCommentText('')}};
 const removeComment=(i)=>setComments(comments.filter((_,x)=>x!==i));
+const addPost=()=>{if(postText.trim()){setPublicPosts([{name:postName||'Guest',text:postText,likes:0},...publicPosts]);setPostName('');setPostText('');}};
+const likePost=(i)=>{const arr=[...publicPosts];arr[i].likes+=1;setPublicPosts(arr);};
+const removePost=(i)=>setPublicPosts(publicPosts.filter((_,x)=>x!==i));
 const addEmergency=()=>{if(emName&&emPhone){setEmergencyContacts([...emergencyContacts,{name:emName,phone:emPhone,type:emType}]);setEmName('');setEmPhone('');setEmType('Friend');}};
 const removeEmergency=(i)=>setEmergencyContacts(emergencyContacts.filter((_,x)=>x!==i));
 const startVoice=()=>{
@@ -104,8 +110,8 @@ return <div style={{padding:18,fontFamily:'-apple-system,BlinkMacSystemFont,Aria
 
 {tab==='emergency' && <div style={card}><h2>🚨 Emergency Contacts</h2><div style={{display:'flex',gap:10,flexWrap:'wrap'}}><input style={input} placeholder='Name' value={emName} onChange={e=>setEmName(e.target.value)}/><input style={input} placeholder='Phone' value={emPhone} onChange={e=>setEmPhone(e.target.value)}/><select style={input} value={emType} onChange={e=>setEmType(e.target.value)}><option>Friend</option><option>Family</option><option>Hospital</option><option>Police</option><option>Roadside</option></select><button style={btn} onClick={addEmergency}>Add</button></div>{emergencyContacts.map((c,i)=><p key={i}><b>{c.name}</b> • {c.type} • 📞 <a href={`tel:${c.phone}`}>{c.phone}</a> <button onClick={()=>removeEmergency(i)}>Delete</button></p>)}<div style={{marginTop:14,padding:14,background:'#fee2e2',borderRadius:16}}><p>📍 In emergency use Guide tab for GPS route.</p><p>🏥 Nearest hospital listed above.</p></div></div>}
 
-{tab==='public' && <div style={card}><h2>🌍 VIP Share Lounge</h2><p>Members: {members.length}</p><p>Total Budget: ${totalBudget}</p><p>Split Each: ${split}</p><p>Share this luxury itinerary with friends & family in real time.</p></div>}
+{tab==='public' && <div style={card}><h2>🌍 Social Travel Lounge</h2><p>Members: {members.length} • Budget ${totalBudget} • Split ${split}</p><div style={{display:'flex',gap:10,flexWrap:'wrap',margin:'14px 0'}}><input style={input} placeholder='Your name' value={postName} onChange={e=>setPostName(e.target.value)}/><input style={input} placeholder='Share update...' value={postText} onChange={e=>setPostText(e.target.value)}/><button style={btn} onClick={addPost}>Post</button></div><div style={{display:'grid',gap:12}}>{publicPosts.map((p,i)=><div key={i} style={{padding:16,background:'#fff',borderRadius:18,border:'1px solid #e5e7eb'}}><b>{p.name}</b><p style={{margin:'8px 0'}}>{p.text}</p><div style={{display:'flex',gap:10}}><button onClick={()=>likePost(i)}>❤️ {p.likes}</button><button onClick={()=>removePost(i)}>Delete</button></div></div>)}</div><div style={{marginTop:16,padding:16,background:'#eff6ff',borderRadius:16}}>Live social feed for trip members. Share plans, ETA, cabin updates, hiking ideas, photos, and meetups.</div></div>}
 
-<div style={{position:'fixed',bottom:0,left:0,right:0,backdropFilter:'blur(18px)',background:'rgba(15,23,42,0.78)',borderTop:'1px solid rgba(255,255,255,0.08)',display:'flex',justifyContent:'space-around',padding:'12px 8px',zIndex:50}}>{[['people','👥'],['budget','💰'],['guide','🗺️'],['assistant','🤖'],['public','🌍']].map(([k,icon])=><button key={k} onClick={()=>setTab(k)} style={{background:'transparent',border:0,color:'#fff',fontSize:24,opacity:tab===k?1:0.6}}>{icon}</button>)}</div><div style={{marginTop:40,padding:'10px 0',textAlign:'center',color:'#e2e8f0',fontSize:13,fontWeight:700}}>Built by Vikesh • Instagram: @vikesh_2026 • VIP Edition</div>
+<div style={{position:'fixed',bottom:0,left:0,right:0,backdropFilter:'blur(18px)',background:'rgba(15,23,42,0.78)',borderTop:'1px solid rgba(255,255,255,0.08)',display:'flex',justifyContent:'space-around',padding:'12px 8px',zIndex:50}}>{[['people','👥'],['budget','💰'],['guide','🗺️'],['assistant','🤖'],['public','🌍']].map(([k,icon])=><button key={k} onClick={()=>setTab(k)} style={{background:'transparent',border:0,color:'#fff',fontSize:24,opacity:tab===k?1:0.6}}>{icon}</button>)}</div><div style={{marginTop:40,padding:'10px 0',textAlign:'center',color:'#e2e8f0',fontSize:13,fontWeight:700}}>Built by Vikesh • @vikesh-2026</div>
 </div>
 }
