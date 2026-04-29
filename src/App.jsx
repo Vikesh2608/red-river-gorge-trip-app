@@ -136,7 +136,37 @@ try{
 };
 const removeMember=async(i)=>{await supabase.from(TABLES.members).delete().eq('id',members[i].id);} ;
 const editMember=(i)=>{setName(members[i].name);setPhone(members[i].phone||'');setEditingMember(i);};
-const addExpense=async()=>{if(expenseTitle&&expenseAmount){const people=participants.length?participants:members.map(m=>m.name);await supabase.from(TABLES.expenses).insert({title:expenseTitle,subType:expenseSubType,amount:Number(expenseAmount),paidBy:paidBy||'Unknown',people});setExpenseTitle('');setExpenseSubType('');setExpenseAmount('');setPaidBy('');setParticipants([]);}};
+const addExpense = async () => {
+if (!expenseTitle || !expenseAmount || !paidBy) {
+ setLoadError('Fill category, amount and paid by');
+ return;
+}
+try {
+ setSyncing(true);
+ setLoadError('');
+ const people = participants.length ? participants : members.map(m => m.name);
+ const { error } = await supabase.from(TABLES.expenses).insert({
+  title: expenseTitle,
+  subType: expenseSubType || '',
+  amount: Number(expenseAmount),
+  paidBy,
+  people
+ });
+ if (error) throw error;
+ const { data } = await supabase.from(TABLES.expenses).select('*').order('id');
+ setExpenses(data || []);
+ setExpenseTitle('');
+ setExpenseSubType('');
+ setExpenseAmount('');
+ setPaidBy('');
+ setParticipants([]);
+ setLastUpdated('Expense added just now');
+} catch (err) {
+ setLoadError(err.message || 'Could not add expense');
+} finally {
+ setSyncing(false);
+}
+};
 const removeExpense=async(i)=>{await supabase.from(TABLES.expenses).delete().eq('id',expenses[i].id);} ;
 const upload=(e)=>{const files=[...e.target.files].map(f=>URL.createObjectURL(f));setPhotos([...photos,...files]);};
 const removePhoto=(i)=>setPhotos(photos.filter((_,x)=>x!==i));
