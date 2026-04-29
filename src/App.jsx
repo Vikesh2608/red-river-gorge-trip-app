@@ -33,6 +33,8 @@ const [emergencyContacts,setEmergencyContacts]=useState([{name:'911 Emergency',p
 const [emName,setEmName]=useState('');
 const [emPhone,setEmPhone]=useState('');
 const [emType,setEmType]=useState('Friend');
+const [paidBy,setPaidBy]=useState('');
+const [participants,setParticipants]=useState('');
 const totalBudget = useMemo(()=>expenses.reduce((a,b)=>a+Number(b.amount||0),0),[expenses]);
 const split = members.length ? (totalBudget/members.length).toFixed(2) : 0;
 useEffect(()=>{
@@ -44,11 +46,12 @@ navigator.geolocation && navigator.geolocation.getCurrentPosition((pos)=>{setLoc
 },[]);
 
 const categoryTotals = useMemo(()=>expenses.reduce((acc,e)=>{acc[e.title]=(acc[e.title]||0)+Number(e.amount||0);return acc;},{}),[expenses]);
+const balances = useMemo(()=>{const map={}; members.forEach(m=>map[m.name]=0); expenses.forEach(e=>{const ppl=e.people&&e.people.length?e.people:members.map(m=>m.name); const share=Number(e.amount||0)/ppl.length; ppl.forEach(n=>{map[n]=(map[n]||0)-share;}); map[e.paidBy]=(map[e.paidBy]||0)+Number(e.amount||0);}); return map;},[expenses,members]);
 
 const addMember=()=>{if(name.trim()){if(editingMember!==null){const updated=[...members];updated[editingMember]={name:name.trim(),phone};setMembers(updated);setEditingMember(null);}else{setMembers([...members,{name:name.trim(),phone}]);}setName('');setPhone('');}};
 const removeMember=(i)=>setMembers(members.filter((_,x)=>x!==i));
 const editMember=(i)=>{setName(members[i].name);setPhone(members[i].phone||'');setEditingMember(i);};
-const addExpense=()=>{if(expenseTitle&&expenseAmount){setExpenses([...expenses,{title:expenseTitle,amount:Number(expenseAmount)}]);setExpenseTitle('');setExpenseAmount('')}};
+const addExpense=()=>{if(expenseTitle&&expenseAmount){const people=(participants||members.map(m=>m.name).join(',')).split(',').map(s=>s.trim()).filter(Boolean);setExpenses([...expenses,{title:expenseTitle,amount:Number(expenseAmount),paidBy:paidBy||'Unknown',people}]);setExpenseTitle('');setExpenseAmount('');setPaidBy('');setParticipants('');}};
 const removeExpense=(i)=>setExpenses(expenses.filter((_,x)=>x!==i));
 const upload=(e)=>{const files=[...e.target.files].map(f=>URL.createObjectURL(f));setPhotos([...photos,...files]);};
 const removePhoto=(i)=>setPhotos(photos.filter((_,x)=>x!==i));
@@ -92,7 +95,7 @@ return <div style={{padding:18,fontFamily:'-apple-system,BlinkMacSystemFont,Aria
 
 {tab==='people' && <div style={card}><h2>👥 Travelers</h2><div style={{display:'flex',gap:10,flexWrap:'wrap'}}><input style={input} placeholder='Name' value={name} onChange={e=>setName(e.target.value)}/><input style={input} placeholder='Phone Number' value={phone} onChange={e=>setPhone(e.target.value)}/><button style={btn} onClick={addMember}>{editingMember!==null?'Update':'Add'}</button></div><ul>{members.map((m,i)=><li key={i} style={{margin:'10px 0'}}><b>{m.name}</b> • 📞 {m.phone||'N/A'} <button onClick={()=>editMember(i)}>Edit</button> <button onClick={()=>removeMember(i)}>Delete</button></li>)}</ul></div>}
 
-{tab==='budget' && <div style={card}><h2 style={{fontSize:32,margin:'0 0 8px 0'}}>💰 Total Budget: ${totalBudget}</h2><h3 style={{color:'#2563eb',marginTop:0}}>Per Person Split: ${split}</h3><div style={{display:'flex',gap:10,flexWrap:'wrap'}}><select style={input} value={expenseTitle} onChange={e=>setExpenseTitle(e.target.value)}><option value=''>Select Category</option><option>Stay</option><option>Food</option><option>Activities</option><option>Fuel</option><option>Other</option></select><input style={input} placeholder='Amount' value={expenseAmount} onChange={e=>setExpenseAmount(e.target.value)}/><button style={btn} onClick={addExpense}>Add</button></div><div style={{marginTop:16,padding:16,background:'#eff6ff',borderRadius:16}}><b>Automatic Split for {members.length} People</b><div style={{marginTop:8}}>{Object.entries(categoryTotals).map(([k,v])=><div key={k}>{k}: ${v} total → ${members.length ? (v/members.length).toFixed(2):0} each</div>)}</div></div><ul>{expenses.map((e,i)=><li key={i} style={{margin:'10px 0'}}>{e.title} - ${e.amount} <button onClick={()=>removeExpense(i)}>Delete</button></li>)}</ul></div>}
+{tab==='budget' && <div style={card}><h2 style={{fontSize:32,margin:'0 0 8px 0'}}>💰 Total Budget: ${totalBudget}</h2><h3 style={{color:'#2563eb',marginTop:0}}>Default Split: ${split}</h3><div style={{display:'flex',gap:10,flexWrap:'wrap'}}><select style={input} value={expenseTitle} onChange={e=>setExpenseTitle(e.target.value)}><option value=''>Category</option><option>Stay</option><option>Food</option><option>Activities</option><option>Fuel</option><option>Other</option></select><input style={input} placeholder='Amount' value={expenseAmount} onChange={e=>setExpenseAmount(e.target.value)}/><input style={input} placeholder='Paid by (name)' value={paidBy} onChange={e=>setPaidBy(e.target.value)}/><input style={input} placeholder='Participants comma names' value={participants} onChange={e=>setParticipants(e.target.value)}/><button style={btn} onClick={addExpense}>Add</button></div><div style={{marginTop:16,padding:16,background:'#eff6ff',borderRadius:16}}><b>Who Owes / Who Gets Back</b>{Object.entries(balances).map(([n,v])=><div key={n}>{n}: {v>=0?`gets $${v.toFixed(2)}`:`owes $${Math.abs(v).toFixed(2)}`}</div>)}</div><ul>{expenses.map((e,i)=><li key={i} style={{margin:'10px 0'}}>{e.title} - ${e.amount} • Paid by {e.paidBy} • Split among {(e.people||[]).join(', ')} <button onClick={()=>removeExpense(i)}>Delete</button></li>)}</ul></div>}
 
 {tab==='photos' && <div style={card}><input type='file' multiple accept='image/*' onChange={upload}/><div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(140px,1fr))',gap:12,marginTop:16}}>{photos.map((p,i)=><div key={i}><img src={p} style={{width:'100%',height:140,objectFit:'cover',borderRadius:12}}/><button onClick={()=>removePhoto(i)}>Delete</button></div>)}</div></div>}
 
