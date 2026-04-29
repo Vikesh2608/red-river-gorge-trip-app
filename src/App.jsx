@@ -63,6 +63,7 @@ const [expenseSubType,setExpenseSubType]=useState('');
 const [syncing,setSyncing]=useState(true);
 const [lastUpdated,setLastUpdated]=useState('Connecting...');
 const [pageReady,setPageReady]=useState(false);
+const [hydrated,setHydrated]=useState(false);
 const [loadError,setLoadError]=useState('');
 const totalBudget = useMemo(()=>expenses.reduce((a,b)=>a+Number(b.amount||0),0),[expenses]);
 const split = members.length ? (totalBudget/members.length).toFixed(2) : 0;
@@ -70,11 +71,11 @@ useEffect(()=>{
 setTimeout(()=>setPageReady(true),2000);
 const loadRealtime = async()=>{
  const {data}=await supabase.from('trip_state').select('*').eq('id',1).single();
- if(data){ setPageReady(true); setMembers(data.members||[]); setLastUpdated('Synced just now'); setSyncing(false); setPageReady(true); setExpenses(data.expenses||[]); setPublicPosts(data.publicPosts||[]); setComments(data.comments||[]); setLiveTrackers(data.liveTrackers||[]); setStay(data.stay||[]); setCars(data.cars||[]); setTimeline(data.timeline||[]); setArrivalStatus(data.arrivalStatus||[]); setEmergencyContacts(data.emergencyContacts||[]); setPhotos(data.photos||[]); }
+ if(data){ setHydrated(true); setPageReady(true); setMembers(data.members||[]); setLastUpdated('Synced just now'); setSyncing(false); setPageReady(true); setExpenses(data.expenses||[]); setPublicPosts(data.publicPosts||[]); setComments(data.comments||[]); setLiveTrackers(data.liveTrackers||[]); setStay(data.stay||[]); setCars(data.cars||[]); setTimeline(data.timeline||[]); setArrivalStatus(data.arrivalStatus||[]); setEmergencyContacts(data.emergencyContacts||[]); setPhotos(data.photos||[]); }
 };
-loadRealtime().catch(()=>{setLoadError('Offline mode');setPageReady(true);setSyncing(false);setLastUpdated('Offline');});
+loadRealtime().then(()=>setHydrated(true)).catch(()=>{setLoadError('Offline mode');setPageReady(true);setSyncing(false);setLastUpdated('Offline');});
 const channel=supabase.channel('trip-sync').on('postgres_changes',{event:'UPDATE',schema:'public',table:'trip_state'},payload=>{
- const d=payload.new; setSyncing(false); setLastUpdated('Updated just now'); setMembers(d.members||[]); setExpenses(d.expenses||[]); setPublicPosts(d.publicPosts||[]); setComments(d.comments||[]); setLiveTrackers(d.liveTrackers||[]); setStay(d.stay||[]); setCars(d.cars||[]); setTimeline(d.timeline||[]); setArrivalStatus(d.arrivalStatus||[]); setEmergencyContacts(d.emergencyContacts||[]); setPhotos(d.photos||[]);
+ const d=payload.new; setHydrated(true); setSyncing(false); setLastUpdated('Updated just now'); setMembers(d.members||[]); setExpenses(d.expenses||[]); setPublicPosts(d.publicPosts||[]); setComments(d.comments||[]); setLiveTrackers(d.liveTrackers||[]); setStay(d.stay||[]); setCars(d.cars||[]); setTimeline(d.timeline||[]); setArrivalStatus(d.arrivalStatus||[]); setEmergencyContacts(d.emergencyContacts||[]); setPhotos(d.photos||[]);
 }).subscribe();
 
 fetch('https://wttr.in/Slade,KY?format=j1').then(r=>r.json()).then(data=>{
@@ -86,9 +87,10 @@ return ()=>{supabase.removeChannel(channel)};
 },[]);
 
 useEffect(()=>{
+if(!hydrated) return;
 const saveState=async()=>{setSyncing(true); await supabase.from('trip_state').upsert({id:1,members,expenses,publicPosts,comments,liveTrackers,stay,cars,timeline,arrivalStatus,emergencyContacts,photos}); setSyncing(false); setLastUpdated('Saved just now');};
 saveState();
-},[members,expenses,publicPosts,comments,liveTrackers,stay,cars,timeline,arrivalStatus,emergencyContacts,photos]);
+},[hydrated,members,expenses,publicPosts,comments,liveTrackers,stay,cars,timeline,arrivalStatus,emergencyContacts,photos]);
 
 const categoryTotals = useMemo(()=>expenses.reduce((acc,e)=>{acc[e.title]=(acc[e.title]||0)+Number(e.amount||0);return acc;},{}),[expenses]);
 const stayExpenses = useMemo(()=>expenses.filter(e=>String(e.title).toLowerCase()==='stay'),[expenses]);
