@@ -189,22 +189,36 @@ const addLiveTracker=()=>{if(trackName && location.lat){setLiveTrackers([{name:t
 const removeLiveTracker=(i)=>setLiveTrackers(liveTrackers.filter((_,x)=>x!==i));
 const startVoice=()=>{
  const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
- if(!SpeechRecognition){setAiTip('Voice commands not supported on this device.');return;}
+ if(!SpeechRecognition){setAiTip('Voice commands not supported on this device. Use Chrome/Edge on mobile.');return;}
  const rec = new SpeechRecognition();
- rec.lang='en-US'; rec.interimResults=false; rec.maxAlternatives=1; rec.start(); setListening(true);
+ rec.lang='en-US';
+ rec.continuous=false;
+ rec.interimResults=true;
+ rec.maxAlternatives=1;
+ rec.onstart=()=>{setListening(true); setAiTip('🎤 Listening... speak now');};
  rec.onresult=(e)=>{
-  const text=e.results[0][0].transcript.toLowerCase();
-  setListening(false);
-  if(text.includes('beautiful')||text.includes('place')||text.includes('view')||text.includes('spot')) setAiTip('🌄 Beautiful places near you: Sky Bridge, Natural Bridge, Chimney Top Rock, Princess Arch. Best now: Sky Bridge for sunset views.');
-  else if(text.includes('farm')||text.includes('farming')) setAiTip('🌾 Nearby local farm stops: Kentucky farm markets, roadside produce stands, fresh honey and jams near Slade/Stanton.');
-  else if(text.includes('gas')||text.includes('fuel')||text.includes('petrol')) setAiTip('⛽ Gas near you: Fill up in Slade or Stanton before entering gorge roads. Search Shell, BP, Speedway nearby.');
-  else if(text.includes('pizza')||text.includes('food')||text.includes('eat')) setAiTip("🍕 Best food near you: Miguel\'s Pizza, Red River Rockhouse, Daniel Boone Coffee Shop, local BBQ spots.");
-  else if(text.includes('weather')) setAiTip(`🌦 Current weather: ${weather.temp} ${weather.desc}. Humidity ${weather.humidity}.`);
-  else if(text.includes('budget')) setAiTip(`💰 Trip total $${totalBudget}. Current split per person about $${split}.`);
-  else if(text.includes('take me')||text.includes('navigate')) window.open('https://maps.google.com/?q=Red+River+Gorge+Kentucky','_blank');
-  else setAiTip('🎙 I heard: '+text+' • Ask about beautiful places, farms, gas, pizza, weather, budget, or navigation.');
+  const last=e.results[e.results.length-1];
+  const text=last[0].transcript.toLowerCase().trim();
+  if(!text) return;
+  if(last.isFinal){
+   setListening(false);
+   if(text.includes('beautiful')||text.includes('place')||text.includes('view')||text.includes('spot')) setAiTip('🌄 Beautiful places near you: Sky Bridge, Natural Bridge, Chimney Top Rock, Princess Arch. Best now: Sky Bridge for sunset views.');
+   else if(text.includes('farm')) setAiTip('🌾 Nearby farm spots: roadside produce stands, fresh honey and Kentucky farm markets near Slade/Stanton.');
+   else if(text.includes('gas')||text.includes('fuel')) setAiTip('⛽ Gas near you: Slade Shell, BP Stanton, Speedway Stanton. Fill before gorge roads.');
+   else if(text.includes('pizza')||text.includes('food')||text.includes('eat')) setAiTip("🍕 Best food near you: Miguel\'s Pizza, Red River Rockhouse, Daniel Boone Coffee Shop.");
+   else if(text.includes('weather')) setAiTip(`🌦 Current weather: ${weather.temp} ${weather.desc}.`);
+   else if(text.includes('budget')) setAiTip(`💰 Trip total $${totalBudget}. Split per person $${split}.`);
+   else if(text.includes('take me')||text.includes('navigate')) {setAiTip('🗺 Opening navigation...'); window.open('https://maps.google.com/?q=Red+River+Gorge+Kentucky','_blank');}
+   else setAiTip('🎙 I heard: '+text+' • Ask about places, farms, gas, pizza, weather or budget.');
+   rec.stop();
+  } else {
+   setAiTip('🎤 Hearing: '+text);
+  }
  };
- rec.onerror=()=>{setListening(false); setAiTip('Voice command failed. Try again.');};
+ rec.onspeechend=()=>{try{rec.stop();}catch(e){}};
+ rec.onend=()=>setListening(false);
+ rec.onerror=(ev)=>{setListening(false); setAiTip('Mic blocked or no speech detected. Allow microphone and try again.');};
+ try{rec.start();}catch(e){setAiTip('Voice already running.');}
 };
 
 const btn={padding:'14px 18px',border:'0',borderRadius:18,background:'linear-gradient(135deg,#2563eb,#7c3aed)',color:'#fff',cursor:'pointer',fontWeight:800,boxShadow:'0 10px 24px rgba(37,99,235,0.28)',transition:'all .2s ease',WebkitTapHighlightColor:'transparent'};
