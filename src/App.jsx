@@ -191,14 +191,18 @@ const startVoice=()=>{
  const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
  if(!SpeechRecognition){setAiTip('Voice commands not supported on this device.');return;}
  const rec = new SpeechRecognition();
- rec.lang='en-US'; rec.start(); setListening(true);
- rec.onresult=(e)=>{const text=e.results[0][0].transcript.toLowerCase(); setListening(false);
- if(text.includes('weather')) setAiTip(`Current weather: ${weather.temp} ${weather.desc}`);
- else if(text.includes('gas')) setAiTip('Nearest gas: Search opened in Guide tab links.');
- else if(text.includes('photo')) setAiTip('Best photo spot now: Sky Bridge at sunset.');
- else if(text.includes('budget')) setAiTip(`Each person owes $${split}`);
- else if(text.includes('take me')) window.open('https://maps.google.com/?q=Red+River+Gorge+Kentucky','_blank');
- else setAiTip('Command heard: '+text);
+ rec.lang='en-US'; rec.interimResults=false; rec.maxAlternatives=1; rec.start(); setListening(true);
+ rec.onresult=(e)=>{
+  const text=e.results[0][0].transcript.toLowerCase();
+  setListening(false);
+  if(text.includes('beautiful')||text.includes('place')||text.includes('view')||text.includes('spot')) setAiTip('🌄 Beautiful places near you: Sky Bridge, Natural Bridge, Chimney Top Rock, Princess Arch. Best now: Sky Bridge for sunset views.');
+  else if(text.includes('farm')||text.includes('farming')) setAiTip('🌾 Nearby local farm stops: Kentucky farm markets, roadside produce stands, fresh honey and jams near Slade/Stanton.');
+  else if(text.includes('gas')||text.includes('fuel')||text.includes('petrol')) setAiTip('⛽ Gas near you: Fill up in Slade or Stanton before entering gorge roads. Search Shell, BP, Speedway nearby.');
+  else if(text.includes('pizza')||text.includes('food')||text.includes('eat')) setAiTip("🍕 Best food near you: Miguel\'s Pizza, Red River Rockhouse, Daniel Boone Coffee Shop, local BBQ spots.");
+  else if(text.includes('weather')) setAiTip(`🌦 Current weather: ${weather.temp} ${weather.desc}. Humidity ${weather.humidity}.`);
+  else if(text.includes('budget')) setAiTip(`💰 Trip total $${totalBudget}. Current split per person about $${split}.`);
+  else if(text.includes('take me')||text.includes('navigate')) window.open('https://maps.google.com/?q=Red+River+Gorge+Kentucky','_blank');
+  else setAiTip('🎙 I heard: '+text+' • Ask about beautiful places, farms, gas, pizza, weather, budget, or navigation.');
  };
  rec.onerror=()=>{setListening(false); setAiTip('Voice command failed. Try again.');};
 };
